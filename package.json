@@ -1,27 +1,78 @@
 {
-  "name": "my-nextjs-voice-bot",
-  "version": "0.1.0",
+  "name": "voice-bot-pro",
+  "version": "1.0.0",
+  "description": "Enterprise-ready hybrid voice chatbot with Browser STT and Whisper integration",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
+    "dev-turbo": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "production-build": "npm run type-check && npm run build",
+    "analyze": "ANALYZE=true npm run build",
+    "clean": "rm -rf .next out node_modules/.cache",
+    "export": "next export"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.7.0",
+    "next": "15.4.5",
     "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "next": "15.4.5"
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
-    "typescript": "^5",
-    "@types/node": "^20",
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20.19.9",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
+    "@types/web": "^0.0.257",
+    "@types/webpack": "^5.28.5",
     "eslint": "^9",
     "eslint-config-next": "15.4.5",
-    "@eslint/eslintrc": "^3"
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "webpack-bundle-analyzer": "^4.10.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "keywords": [
+    "voice-bot",
+    "speech-recognition",
+    "text-to-speech",
+    "ai-chatbot",
+    "whisper",
+    "gemini",
+    "nextjs",
+    "typescript",
+    "hybrid-stt",
+    "browser-speech",
+    "real-time",
+    "progressive-enhancement"
+  ],
+  "author": "Gaurav Singh",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/voice-bot-pro.git"
+  },
+  "homepage": "https://your-voice-bot.vercel.app",
+  "bugs": {
+    "url": "https://github.com/yourusername/voice-bot-pro/issues"
   }
 }
