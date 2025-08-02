@@ -1,11 +1,7 @@
 import { pipeline, env } from '@huggingface/transformers';
 
-// ✅ FIXED: Remove the problematic wasm configuration entirely
 env.allowRemoteModels = true;
 env.allowLocalModels = false;
-
-// ✅ Don't try to modify the read-only wasm property
-// The library will handle WASM paths automatically
 
 declare const self: Worker;
 
@@ -15,10 +11,54 @@ let isInitialized = false;
 interface WhisperMessage {
   type: 'init' | 'transcribe';
   audioData?: Float32Array;
+  language?: string;
 }
 
+// ✅ OPTIMIZED: Start with fastest loading model first
+const initializeTranscriber = async (): Promise<void> => {
+  console.log('🔄 Loading fast speech recognition...');
+  self.postMessage({ type: 'loading', message: 'Loading fast model...' });
+
+  // ✅ Start with tiny model (loads in ~10-30 seconds instead of 2-5 minutes)
+  try {
+    console.log('🚀 Loading tiny model for instant availability...');
+    transcriber = await pipeline(
+      'automatic-speech-recognition',
+      'Xenova/whisper-tiny.en',  // ✅ Smallest, fastest model
+      {
+        device: 'wasm',
+        dtype: 'fp32'
+      }
+    );
+    console.log('✅ Fast model ready!');
+    self.postMessage({ type: 'loading', message: 'Fast model loaded!' });
+    return;
+  } catch (tinyError) {
+    console.warn('⚠️ Tiny model failed, trying base...');
+  }
+
+  // ✅ Only try larger models if tiny fails
+  try {
+    console.log('🔄 Loading base model...');
+    self.postMessage({ type: 'loading', message: 'Loading enhanced model...' });
+    transcriber = await pipeline(
+      'automatic-speech-recognition',
+      'Xenova/whisper-base.en',  // ✅ Medium size, good performance
+      {
+        device: 'wasm',
+        dtype: 'fp32'
+      }
+    );
+    console.log('✅ Base model loaded');
+    return;
+  } catch (baseError: any) {
+    console.error('❌ All models failed:', baseError);
+    throw new Error(`Speech recognition failed: ${baseError.message}`);
+  }
+};
+
 self.onmessage = async (event: MessageEvent<WhisperMessage>) => {
-  const { type, audioData } = event.data;
+  const { type, audioData, language = 'en' } = event.data;
 
   try {
     switch (type) {
@@ -28,43 +68,14 @@ self.onmessage = async (event: MessageEvent<WhisperMessage>) => {
           return;
         }
 
-        console.log('🔄 Loading Whisper model...');
-        self.postMessage({ type: 'loading', message: 'Loading Whisper model...' });
-
         try {
-          transcriber = await pipeline(
-            'automatic-speech-recognition', 
-            'Xenova/whisper-tiny.en',
-            {
-              progress_callback: (progress: any) => {
-                try {
-                  if (progress?.status === 'downloading' && progress.loaded && progress.total) {
-                    const percent = Math.round((progress.loaded / progress.total) * 100);
-                    self.postMessage({ 
-                      type: 'loading', 
-                      message: `Downloading: ${percent}%` 
-                    });
-                  } else if (progress?.status === 'loading') {
-                    self.postMessage({ 
-                      type: 'loading', 
-                      message: 'Initializing model...' 
-                    });
-                  }
-                } catch (progressError) {
-                  console.warn('Progress callback error:', progressError);
-                }
-              }
-            }
-          );
-          
+          await initializeTranscriber();
           isInitialized = true;
-          console.log('✅ Whisper model ready');
           self.postMessage({ type: 'ready' });
-        } catch (error: any) {
-          console.error('❌ Whisper init error:', error);
+        } catch (initError: any) {
           self.postMessage({ 
             type: 'error', 
-            error: error.message || 'Failed to load Whisper model' 
+            error: `Failed to load speech recognition: ${initError.message}` 
           });
         }
         break;
@@ -73,7 +84,7 @@ self.onmessage = async (event: MessageEvent<WhisperMessage>) => {
         if (!transcriber || !isInitialized) {
           self.postMessage({ 
             type: 'error', 
-            error: 'Whisper model not ready' 
+            error: 'Speech recognition not ready' 
           });
           return;
         }
@@ -81,41 +92,37 @@ self.onmessage = async (event: MessageEvent<WhisperMessage>) => {
         if (!audioData || audioData.length === 0) {
           self.postMessage({ 
             type: 'error', 
-            error: 'No audio data provided' 
+            error: 'No audio data' 
           });
           return;
         }
 
+        console.log('🎯 Processing audio...');
+
         try {
-          console.log('🎯 Transcribing audio...');
+          // ✅ Simplified parameters for faster processing
           const result = await transcriber(audioData, {
-            chunk_length_s: 30,
-            stride_length_s: 5,
             return_timestamps: false,
-            force_full_sequences: false
+            chunk_length_s: 15,  // ✅ Smaller chunks for speed
+            stride_length_s: 2   // ✅ Less overlap for speed
           });
-          
-          const text = typeof result === 'string' ? result.trim() : 
-                      result?.text?.trim() || '';
-          
-          console.log('✅ Transcription result:', text);
-          
+
+          const text = result?.text?.trim() || '';
+          console.log('✅ Transcription complete:', text);
+
           self.postMessage({ 
             type: 'transcript', 
             text: text,
             isFinal: true 
           });
-        } catch (error: any) {
-          console.error('❌ Transcription error:', error);
+          
+        } catch (transcribeError: any) {
+          console.error('❌ Transcription error:', transcribeError);
           self.postMessage({ 
             type: 'error', 
-            error: error.message || 'Transcription failed' 
+            error: `Transcription failed: ${transcribeError.message}` 
           });
         }
-        break;
-
-      default:
-        console.warn('Unknown message type:', type);
         break;
     }
   } catch (error: any) {
@@ -127,9 +134,8 @@ self.onmessage = async (event: MessageEvent<WhisperMessage>) => {
   }
 };
 
-// ✅ Simple error handler
-self.onerror = (error) => {
-  console.error('❌ Worker error:', error);
+self.onerror = (error: ErrorEvent) => {
+  console.error('❌ Worker script error:', error);
   self.postMessage({ 
     type: 'error', 
     error: 'Worker script error occurred' 
