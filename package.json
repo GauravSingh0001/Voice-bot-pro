@@ -48,10 +48,8 @@
     "gemini",
     "nextjs",
     "typescript",
-    "hybrid-stt",
-    "browser-speech",
     "real-time",
-    "progressive-enhancement"
+    "enterprise"
   ],
   "author": "Gaurav Singh",
   "license": "MIT",

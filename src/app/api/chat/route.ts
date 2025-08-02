@@ -47,7 +47,6 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    // ✅ Fixed: Replaced 'any' with proper type assertion
     const content = (data.candidates?.[0]?.content?.parts?.[0]?.text as string) || "I couldn't generate a response.";
     
     if (enableCaching) {
@@ -59,7 +58,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ content: content.trim() });
     
-  } catch (error: unknown) { // ✅ Fixed: 'any' → 'unknown'
+  } catch (error: unknown) {
     console.error('API Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to get AI response';
     return NextResponse.json({ 

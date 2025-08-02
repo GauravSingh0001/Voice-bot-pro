@@ -5,7 +5,7 @@ env.allowLocalModels = false;
 
 declare const self: Worker;
 
-let transcriber: unknown = null; // ✅ Fixed: Changed from 'any'
+let transcriber: unknown = null;
 let isInitialized = false;
 
 interface WhisperMessage {
@@ -15,7 +15,7 @@ interface WhisperMessage {
 }
 
 self.onmessage = async (event: MessageEvent<WhisperMessage>) => {
-  const { type, audioData } = event.data; // ✅ Fixed: Removed unused 'language'
+  const { type, audioData } = event.data;
 
   try {
     switch (type) {
@@ -42,7 +42,7 @@ self.onmessage = async (event: MessageEvent<WhisperMessage>) => {
           console.log('✅ Whisper ready');
           self.postMessage({ type: 'ready' });
 
-        } catch (initError: unknown) { // ✅ Fixed: 'any' → 'unknown'
+        } catch (initError: unknown) {
           const errorMessage = initError instanceof Error ? initError.message : 'Unknown error';
           console.error('❌ Whisper failed:', errorMessage);
           self.postMessage({ 
@@ -72,7 +72,6 @@ self.onmessage = async (event: MessageEvent<WhisperMessage>) => {
         console.log('🎯 Processing audio...');
 
         try {
-          // ✅ Fixed: Type assertion for transcriber function
           const transcriberFn = transcriber as (audioData: Float32Array, options?: Record<string, unknown>) => Promise<{ text: string }>;
           const result = await transcriberFn(audioData, {
             return_timestamps: false,
@@ -90,7 +89,7 @@ self.onmessage = async (event: MessageEvent<WhisperMessage>) => {
             isFinal: true 
           });
           
-        } catch (transcribeError: unknown) { // ✅ Fixed: 'any' → 'unknown'
+        } catch (transcribeError: unknown) {
           const errorMessage = transcribeError instanceof Error ? transcribeError.message : 'Unknown error';
           console.error('❌ Transcription error:', errorMessage);
           self.postMessage({ 
@@ -100,7 +99,7 @@ self.onmessage = async (event: MessageEvent<WhisperMessage>) => {
         }
         break;
     }
-  } catch (error: unknown) { // ✅ Fixed: 'any' → 'unknown'
+  } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Worker processing failed';
     console.error('Worker error:', errorMessage);
     self.postMessage({ 

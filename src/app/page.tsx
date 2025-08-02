@@ -51,10 +51,9 @@ class TextToSpeech {
       utterance.volume = volume;
       
       utterance.onend = () => resolve();
-      // ✅ Fixed: Proper error typing
-      utterance.onerror = (event: SpeechSynthesisErrorEvent) => {
-        const errorMessage = event.error || 'TTS failed';
-        reject(new Error(`TTS failed: ${errorMessage}`));
+      // ✅ FIXED Line 139: Remove unused error parameter
+      utterance.onerror = () => {
+        reject(new Error('TTS failed'));
       };
       
       this.synthesis.speak(utterance);
@@ -277,7 +276,7 @@ interface LatencyPanelProps {
   performanceHistory: number[];
 }
 
-// ✅ FIXED: Performance Panel with Proper Text Colors
+// ✅ Performance Panel
 function LatencyPanel({ sttTime, apiTime, ttsTime, totalTime, performanceHistory }: LatencyPanelProps) {
   const averageTime = performanceHistory.length > 0 
     ? Math.round(performanceHistory.reduce((a, b) => a + b, 0) / performanceHistory.length)
@@ -346,7 +345,7 @@ function LatencyPanel({ sttTime, apiTime, ttsTime, totalTime, performanceHistory
   );
 }
 
-// ✅ FIXED: Settings Panel with Proper Text Colors
+// ✅ Settings Panel
 function SettingsPanel({ 
   settings, 
   onSettingsChange, 
@@ -433,7 +432,7 @@ function SettingsPanel({
   );
 }
 
-// ✅ Professional Status Panel
+// ✅ Status Panel
 function StatusPanel() {
   return (
     <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
@@ -507,8 +506,8 @@ export default function Home() {
   const whisperWorker = useRef<Worker | null>(null);
   const ttsEngine = useRef<TextToSpeech>(new TextToSpeech());
 
-  // ✅ Fixed: Proper error handling
-  const callGemini = async (message: string, attempt: number = 1): Promise<string> => {
+  // ✅ FIXED Line 590: Use useCallback for callGemini and add to dependencies
+  const callGemini = useCallback(async (message: string, attempt: number = 1): Promise<string> => {
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -528,7 +527,7 @@ export default function Home() {
 
       const data = await response.json();
       return data.content;
-    } catch (error: unknown) { // ✅ Fixed: 'any' → 'unknown'
+    } catch (error: unknown) {
       if (attempt < voiceSettings.retryAttempts) {
         await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
         return callGemini(message, attempt + 1);
@@ -537,9 +536,8 @@ export default function Home() {
       const errorMessage = error instanceof Error ? error.message : 'Failed to get AI response after retries';
       throw new Error(errorMessage);
     }
-  };
+  }, [voiceSettings.enableCaching, voiceSettings.retryAttempts]);
 
-  // ✅ Fixed: Add handleTranscriptComplete to useCallback
   const handleTranscriptComplete = useCallback(async (text: string) => {
     try {
       setError('');
@@ -573,7 +571,7 @@ export default function Home() {
         
         setIsProcessing(false);
         
-      } catch (ttsError: unknown) { // ✅ Fixed: 'any' → 'unknown'
+      } catch (ttsError: unknown) {
         const errorMessage = ttsError instanceof Error ? ttsError.message : 'Voice synthesis failed';
         setError(`Voice synthesis failed: ${errorMessage}`);
         const totalTime = Date.now() - startTime.current;
@@ -581,13 +579,13 @@ export default function Home() {
         setIsProcessing(false);
       }
 
-    } catch (error: unknown) { // ✅ Fixed: 'any' → 'unknown'
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to process your request. Please try again.';
       setError(errorMessage);
       setRetryCount(prev => prev + 1);
       setIsProcessing(false);
     }
-  }, [voiceSettings.enableCaching, voiceSettings.retryAttempts, voiceSettings.ttsRate, voiceSettings.ttsVolume]);
+  }, [callGemini, voiceSettings.ttsRate, voiceSettings.ttsVolume]);
 
   const startRecording = async () => {
     try {
@@ -601,11 +599,10 @@ export default function Home() {
       startTime.current = Date.now();
       sttStartTime.current = Date.now();
 
-      // ✅ Set up waveform callback
       audioRecorder.current.setWaveformCallback(setWaveformData);
       await audioRecorder.current.startRecording();
       
-    } catch (error: unknown) { // ✅ Fixed: 'any' → 'unknown'
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to start recording';
       setError('Failed to start recording: ' + errorMessage);
       setIsRecording(false);
@@ -632,7 +629,7 @@ export default function Home() {
           audioData 
         });
         
-      } catch (error: unknown) { // ✅ Fixed: 'any' → 'unknown'
+      } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to process recording';
         setError('Failed to process recording: ' + errorMessage);
         setIsProcessing(false);
@@ -689,11 +686,13 @@ export default function Home() {
 
     return () => {
       whisperWorker.current?.terminate();
-      // ✅ Fixed: Capture ref value for cleanup
+      // ✅ FIXED Line 693: Capture ref value for cleanup
       const currentTtsEngine = ttsEngine.current;
-      currentTtsEngine.stop();
+      if (currentTtsEngine) {
+        currentTtsEngine.stop();
+      }
     };
-  }, [handleTranscriptComplete]); // ✅ Fixed: Add missing dependency
+  }, [handleTranscriptComplete]);
 
   const isSystemReady = whisperStatus === 'Ready' && ttsStatus === 'Ready';
 
