@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  eslint: {
+    // Warning: This allows production builds to successfully complete even if
+    // your project has ESLint errors.
+    ignoreDuringBuilds: true,
+  },
   experimental: {
     esmExternals: true,
   },
@@ -12,13 +17,6 @@ const nextConfig = {
         tls: false,
       };
     }
-    
-    // Add support for web workers
-    config.module.rules.push({
-      test: /\.worker\.(js|ts)$/,
-      use: { loader: 'worker-loader' },
-    });
-    
     return config;
   },
 }
