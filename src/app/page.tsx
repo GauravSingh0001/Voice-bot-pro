@@ -686,7 +686,6 @@ export default function Home() {
 
     return () => {
       whisperWorker.current?.terminate();
-      // ✅ FIXED Line 693: Capture ref value for cleanup
       const currentTtsEngine = ttsEngine.current;
       if (currentTtsEngine) {
         currentTtsEngine.stop();

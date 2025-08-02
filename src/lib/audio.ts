@@ -1,4 +1,4 @@
-// ✅ COMPLETELY FIXED: Audio processing utilities with proper typing
+// ✅ COMPLETELY FIXED src/lib/audio.ts
 export class AudioProcessor {
   private audioContext: AudioContext | null = null;
   
@@ -15,21 +15,11 @@ export class AudioProcessor {
     }
     
     const processedData = new Float32Array(audioData.length);
-    
     for (let i = 0; i < audioData.length; i++) {
       processedData[i] = audioData[i] * (options.gain as number || 1.0);
     }
     
     return processedData;
-  }
-  
-  // ✅ FIXED Line 93: Replace 'any' with proper error type  
-  handleError(error: unknown): void {
-    if (error instanceof Error) {
-      console.error('Audio processing error:', error.message);
-    } else {
-      console.error('Unknown audio processing error:', String(error));
-    }
   }
   
   convertAudioBuffer(buffer: AudioBuffer): Float32Array {
@@ -56,6 +46,15 @@ export class AudioProcessor {
       sum += audioData[i] * audioData[i];
     }
     return Math.sqrt(sum / audioData.length);
+  }
+  
+  // ✅ FIXED Line 93: Replace 'any' with proper error type
+  handleError(error: unknown): void {
+    if (error instanceof Error) {
+      console.error('Audio processing error:', error.message);
+    } else {
+      console.error('Unknown audio processing error:', String(error));
+    }
   }
   
   applyNoiseGate(audioData: Float32Array, threshold: number = 0.01): Float32Array {
