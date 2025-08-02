@@ -491,7 +491,7 @@ export default function Home() {
   const [waveformData, setWaveformData] = useState<Float32Array>();
   
   const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>({
-    ttsRate: 1.2,
+    ttsRate: 2.0,
     ttsVolume: 0.8,
     enableCaching: true,
     retryAttempts: 3
@@ -638,7 +638,7 @@ export default function Home() {
 
   const resetSettings = () => {
     setVoiceSettings({
-      ttsRate: 1.2,
+      ttsRate: 2.0,
       ttsVolume: 0.8,
       enableCaching: true,
       retryAttempts: 3

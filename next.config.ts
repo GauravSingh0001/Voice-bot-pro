@@ -1,18 +1,26 @@
-import type { NextConfig } from 'next';
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   experimental: {
-    // No problematic experimental features
+    esmExternals: true,
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
+        ...config.resolve.fallback,
         fs: false,
-        path: false,
+        net: false,
+        tls: false,
       };
     }
+    
+    // Add support for web workers
+    config.module.rules.push({
+      test: /\.worker\.(js|ts)$/,
+      use: { loader: 'worker-loader' },
+    });
+    
     return config;
   },
-};
+}
 
-export default nextConfig;
+module.exports = nextConfig

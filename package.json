@@ -18,48 +18,14 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "autoprefixer": "^10.4.21",
     "eslint": "^8",
     "eslint-config-next": "15.4.5",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5"
   },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
-  "keywords": [
-    "voice-bot",
-    "speech-recognition",
-    "text-to-speech",
-    "ai-chatbot",
-    "whisper",
-    "gemini",
-    "nextjs",
-    "typescript",
-    "real-time",
-    "enterprise"
-  ],
-  "author": "Gaurav Singh",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/GauravSingh0001/Voice-bot-pro.git"
-  },
-  "homepage": "https://voice-bot-pro.vercel.app",
-  "bugs": {
-    "url": "https://github.com/GauravSingh0001/Voice-bot-pro/issues"
-  },
-  "description": "Next-generation voice assistant platform with enterprise-grade speech processing, real-time recognition, and intelligent conversation capabilities."
+  }
 }
