@@ -5,7 +5,7 @@ env.allowLocalModels = false;
 
 declare const self: Worker;
 
-let transcriber: any = null;
+let transcriber: unknown = null; // ✅ Fixed: Changed from 'any'
 let isInitialized = false;
 
 interface WhisperMessage {
@@ -14,51 +14,8 @@ interface WhisperMessage {
   language?: string;
 }
 
-// ✅ OPTIMIZED: Start with fastest loading model first
-const initializeTranscriber = async (): Promise<void> => {
-  console.log('🔄 Loading fast speech recognition...');
-  self.postMessage({ type: 'loading', message: 'Loading fast model...' });
-
-  // ✅ Start with tiny model (loads in ~10-30 seconds instead of 2-5 minutes)
-  try {
-    console.log('🚀 Loading tiny model for instant availability...');
-    transcriber = await pipeline(
-      'automatic-speech-recognition',
-      'Xenova/whisper-tiny.en',  // ✅ Smallest, fastest model
-      {
-        device: 'wasm',
-        dtype: 'fp32'
-      }
-    );
-    console.log('✅ Fast model ready!');
-    self.postMessage({ type: 'loading', message: 'Fast model loaded!' });
-    return;
-  } catch (tinyError) {
-    console.warn('⚠️ Tiny model failed, trying base...');
-  }
-
-  // ✅ Only try larger models if tiny fails
-  try {
-    console.log('🔄 Loading base model...');
-    self.postMessage({ type: 'loading', message: 'Loading enhanced model...' });
-    transcriber = await pipeline(
-      'automatic-speech-recognition',
-      'Xenova/whisper-base.en',  // ✅ Medium size, good performance
-      {
-        device: 'wasm',
-        dtype: 'fp32'
-      }
-    );
-    console.log('✅ Base model loaded');
-    return;
-  } catch (baseError: any) {
-    console.error('❌ All models failed:', baseError);
-    throw new Error(`Speech recognition failed: ${baseError.message}`);
-  }
-};
-
 self.onmessage = async (event: MessageEvent<WhisperMessage>) => {
-  const { type, audioData, language = 'en' } = event.data;
+  const { type, audioData } = event.data; // ✅ Fixed: Removed unused 'language'
 
   try {
     switch (type) {
@@ -68,14 +25,29 @@ self.onmessage = async (event: MessageEvent<WhisperMessage>) => {
           return;
         }
 
+        console.log('🔄 Loading Whisper model...');
+        self.postMessage({ type: 'loading', message: 'Loading speech recognition...' });
+
         try {
-          await initializeTranscriber();
+          transcriber = await pipeline(
+            'automatic-speech-recognition',
+            'Xenova/whisper-tiny.en',
+            {
+              device: 'wasm',
+              dtype: 'fp32'
+            }
+          );
+
           isInitialized = true;
+          console.log('✅ Whisper ready');
           self.postMessage({ type: 'ready' });
-        } catch (initError: any) {
+
+        } catch (initError: unknown) { // ✅ Fixed: 'any' → 'unknown'
+          const errorMessage = initError instanceof Error ? initError.message : 'Unknown error';
+          console.error('❌ Whisper failed:', errorMessage);
           self.postMessage({ 
             type: 'error', 
-            error: `Failed to load speech recognition: ${initError.message}` 
+            error: `Whisper failed: ${errorMessage}` 
           });
         }
         break;
@@ -84,7 +56,7 @@ self.onmessage = async (event: MessageEvent<WhisperMessage>) => {
         if (!transcriber || !isInitialized) {
           self.postMessage({ 
             type: 'error', 
-            error: 'Speech recognition not ready' 
+            error: 'Whisper not ready' 
           });
           return;
         }
@@ -100,11 +72,13 @@ self.onmessage = async (event: MessageEvent<WhisperMessage>) => {
         console.log('🎯 Processing audio...');
 
         try {
-          // ✅ Simplified parameters for faster processing
-          const result = await transcriber(audioData, {
+          // ✅ Fixed: Type assertion for transcriber function
+          const transcriberFn = transcriber as (audioData: Float32Array, options?: Record<string, unknown>) => Promise<{ text: string }>;
+          const result = await transcriberFn(audioData, {
             return_timestamps: false,
-            chunk_length_s: 15,  // ✅ Smaller chunks for speed
-            stride_length_s: 2   // ✅ Less overlap for speed
+            chunk_length_s: 10,
+            stride_length_s: 1,
+            no_speech_threshold: 0.8
           });
 
           const text = result?.text?.trim() || '';
@@ -116,20 +90,22 @@ self.onmessage = async (event: MessageEvent<WhisperMessage>) => {
             isFinal: true 
           });
           
-        } catch (transcribeError: any) {
-          console.error('❌ Transcription error:', transcribeError);
+        } catch (transcribeError: unknown) { // ✅ Fixed: 'any' → 'unknown'
+          const errorMessage = transcribeError instanceof Error ? transcribeError.message : 'Unknown error';
+          console.error('❌ Transcription error:', errorMessage);
           self.postMessage({ 
             type: 'error', 
-            error: `Transcription failed: ${transcribeError.message}` 
+            error: `Transcription failed: ${errorMessage}` 
           });
         }
         break;
     }
-  } catch (error: any) {
-    console.error('❌ Worker error:', error);
+  } catch (error: unknown) { // ✅ Fixed: 'any' → 'unknown'
+    const errorMessage = error instanceof Error ? error.message : 'Worker processing failed';
+    console.error('Worker error:', errorMessage);
     self.postMessage({ 
       type: 'error', 
-      error: error.message || 'Worker processing failed' 
+      error: errorMessage
     });
   }
 };

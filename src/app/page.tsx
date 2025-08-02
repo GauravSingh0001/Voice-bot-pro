@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 // ✅ Enhanced TTS Class
 class TextToSpeech {
@@ -51,7 +51,11 @@ class TextToSpeech {
       utterance.volume = volume;
       
       utterance.onend = () => resolve();
-      utterance.onerror = (event) => reject(new Error(`TTS failed: ${event.error}`));
+      // ✅ Fixed: Proper error typing
+      utterance.onerror = (event: SpeechSynthesisErrorEvent) => {
+        const errorMessage = event.error || 'TTS failed';
+        reject(new Error(`TTS failed: ${errorMessage}`));
+      };
       
       this.synthesis.speak(utterance);
     });
@@ -103,7 +107,7 @@ class AudioRecorder {
         } 
       });
       
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ 
+      this.audioContext = new (window.AudioContext || (window as Window & typeof globalThis & {webkitAudioContext: typeof AudioContext}).webkitAudioContext)({ 
         sampleRate: 16000,
         latencyHint: 'interactive'
       });
@@ -503,6 +507,7 @@ export default function Home() {
   const whisperWorker = useRef<Worker | null>(null);
   const ttsEngine = useRef<TextToSpeech>(new TextToSpeech());
 
+  // ✅ Fixed: Proper error handling
   const callGemini = async (message: string, attempt: number = 1): Promise<string> => {
     try {
       const response = await fetch('/api/chat', {
@@ -523,17 +528,19 @@ export default function Home() {
 
       const data = await response.json();
       return data.content;
-    } catch (error: any) {
+    } catch (error: unknown) { // ✅ Fixed: 'any' → 'unknown'
       if (attempt < voiceSettings.retryAttempts) {
         await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
         return callGemini(message, attempt + 1);
       }
       
-      throw new Error(error.message || 'Failed to get AI response after retries');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to get AI response after retries';
+      throw new Error(errorMessage);
     }
   };
 
-  const handleTranscriptComplete = async (text: string) => {
+  // ✅ Fixed: Add handleTranscriptComplete to useCallback
+  const handleTranscriptComplete = useCallback(async (text: string) => {
     try {
       setError('');
       setRetryCount(0);
@@ -566,19 +573,21 @@ export default function Home() {
         
         setIsProcessing(false);
         
-      } catch (ttsError: any) {
-        setError(`Voice synthesis failed: ${ttsError.message}`);
+      } catch (ttsError: unknown) { // ✅ Fixed: 'any' → 'unknown'
+        const errorMessage = ttsError instanceof Error ? ttsError.message : 'Voice synthesis failed';
+        setError(`Voice synthesis failed: ${errorMessage}`);
         const totalTime = Date.now() - startTime.current;
         setLatency(prev => ({ ...prev, total: totalTime }));
         setIsProcessing(false);
       }
 
-    } catch (error: any) {
-      setError(error.message || 'Failed to process your request. Please try again.');
+    } catch (error: unknown) { // ✅ Fixed: 'any' → 'unknown'
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process your request. Please try again.';
+      setError(errorMessage);
       setRetryCount(prev => prev + 1);
       setIsProcessing(false);
     }
-  };
+  }, [voiceSettings.enableCaching, voiceSettings.retryAttempts, voiceSettings.ttsRate, voiceSettings.ttsVolume]);
 
   const startRecording = async () => {
     try {
@@ -596,8 +605,9 @@ export default function Home() {
       audioRecorder.current.setWaveformCallback(setWaveformData);
       await audioRecorder.current.startRecording();
       
-    } catch (error: any) {
-      setError('Failed to start recording: ' + error.message);
+    } catch (error: unknown) { // ✅ Fixed: 'any' → 'unknown'
+      const errorMessage = error instanceof Error ? error.message : 'Failed to start recording';
+      setError('Failed to start recording: ' + errorMessage);
       setIsRecording(false);
       setIsProcessing(false);
     }
@@ -622,8 +632,9 @@ export default function Home() {
           audioData 
         });
         
-      } catch (error: any) {
-        setError('Failed to process recording: ' + error.message);
+      } catch (error: unknown) { // ✅ Fixed: 'any' → 'unknown'
+        const errorMessage = error instanceof Error ? error.message : 'Failed to process recording';
+        setError('Failed to process recording: ' + errorMessage);
         setIsProcessing(false);
       }
     }
@@ -642,7 +653,7 @@ export default function Home() {
     whisperWorker.current = new Worker(new URL('../workers/whisperWorker.ts', import.meta.url));
     
     whisperWorker.current.onmessage = (event) => {
-      const { type, text, error, message } = event.data;
+      const { type, text, error: workerError, message } = event.data;
       
       switch (type) {
         case 'ready':
@@ -663,7 +674,7 @@ export default function Home() {
           break;
           
         case 'error':
-          setError(`Speech recognition error: ${error}`);
+          setError(`Speech recognition error: ${workerError}`);
           setIsProcessing(false);
           setWhisperStatus('Error');
           break;
@@ -678,9 +689,11 @@ export default function Home() {
 
     return () => {
       whisperWorker.current?.terminate();
-      ttsEngine.current.stop();
+      // ✅ Fixed: Capture ref value for cleanup
+      const currentTtsEngine = ttsEngine.current;
+      currentTtsEngine.stop();
     };
-  }, []);
+  }, [handleTranscriptComplete]); // ✅ Fixed: Add missing dependency
 
   const isSystemReady = whisperStatus === 'Ready' && ttsStatus === 'Ready';
 
@@ -760,7 +773,7 @@ export default function Home() {
                   🎙️ Listening... Speak clearly into your microphone
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
-                  Click "Stop Recording" when you're finished speaking
+                  Click &quot;Stop Recording&quot; when you&apos;re finished speaking
                 </p>
               </div>
             )}
@@ -861,7 +874,7 @@ export default function Home() {
           <h3 className="text-2xl font-bold text-gray-800 mb-4">Ready for Production</h3>
           <div className="grid md:grid-cols-3 gap-6 mb-6">
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600"> 1.2s</div>
+              <div className="text-3xl font-bold text-blue-600">&lt; 1.2s</div>
               <div className="text-sm text-gray-600">Average Response Time</div>
             </div>
             <div className="text-center">
