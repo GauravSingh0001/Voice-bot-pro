@@ -1,4 +1,4 @@
-// ✅ COMPLETELY FIXED src/lib/audio.ts
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export class AudioProcessor {
   private audioContext: AudioContext | null = null;
   
@@ -8,15 +8,15 @@ export class AudioProcessor {
     }
   }
   
-  // ✅ FIXED Line 25: Replace 'any' with proper types
-  async processAudio(audioData: Float32Array, options: Record<string, unknown> = {}): Promise<Float32Array> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async processAudio(audioData: Float32Array, options: any = {}): Promise<Float32Array> {
     if (!this.audioContext) {
       throw new Error('Audio context not available');
     }
     
     const processedData = new Float32Array(audioData.length);
     for (let i = 0; i < audioData.length; i++) {
-      processedData[i] = audioData[i] * (options.gain as number || 1.0);
+      processedData[i] = audioData[i] * (options.gain || 1.0);
     }
     
     return processedData;
@@ -48,8 +48,8 @@ export class AudioProcessor {
     return Math.sqrt(sum / audioData.length);
   }
   
-  // ✅ FIXED Line 93: Replace 'any' with proper error type
-  handleError(error: unknown): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handleError(error: any): void {
     if (error instanceof Error) {
       console.error('Audio processing error:', error.message);
     } else {

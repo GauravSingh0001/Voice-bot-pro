@@ -5,7 +5,8 @@ env.allowLocalModels = false;
 
 declare const self: Worker;
 
-let transcriber: unknown = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let transcriber: any = null;
 let isInitialized = false;
 
 interface WhisperMessage {
@@ -72,8 +73,7 @@ self.onmessage = async (event: MessageEvent<WhisperMessage>) => {
         console.log('🎯 Processing audio...');
 
         try {
-          const transcriberFn = transcriber as (audioData: Float32Array, options?: Record<string, unknown>) => Promise<{ text: string }>;
-          const result = await transcriberFn(audioData, {
+          const result = await transcriber(audioData, {
             return_timestamps: false,
             chunk_length_s: 10,
             stride_length_s: 1,

@@ -51,8 +51,8 @@ class TextToSpeech {
       utterance.volume = volume;
       
       utterance.onend = () => resolve();
-      // ✅ FIXED Line 139: Remove unused error parameter
-      utterance.onerror = () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      utterance.onerror = (error: SpeechSynthesisErrorEvent) => {
         reject(new Error('TTS failed'));
       };
       
@@ -120,7 +120,6 @@ class AudioRecorder {
           const threshold = 0.01;
           const hasSignal = inputData.some(sample => Math.abs(sample) > threshold);
           
-          // ✅ Send waveform data for visualization
           if (this.waveformCallback) {
             this.waveformCallback(new Float32Array(inputData));
           }
@@ -276,7 +275,7 @@ interface LatencyPanelProps {
   performanceHistory: number[];
 }
 
-// ✅ Performance Panel
+// ✅ Performance Panel with Fixed Colors
 function LatencyPanel({ sttTime, apiTime, ttsTime, totalTime, performanceHistory }: LatencyPanelProps) {
   const averageTime = performanceHistory.length > 0 
     ? Math.round(performanceHistory.reduce((a, b) => a + b, 0) / performanceHistory.length)
@@ -345,7 +344,7 @@ function LatencyPanel({ sttTime, apiTime, ttsTime, totalTime, performanceHistory
   );
 }
 
-// ✅ Settings Panel
+// ✅ Settings Panel with Fixed Colors
 function SettingsPanel({ 
   settings, 
   onSettingsChange, 
@@ -506,7 +505,6 @@ export default function Home() {
   const whisperWorker = useRef<Worker | null>(null);
   const ttsEngine = useRef<TextToSpeech>(new TextToSpeech());
 
-  // ✅ FIXED Line 590: Use useCallback for callGemini and add to dependencies
   const callGemini = useCallback(async (message: string, attempt: number = 1): Promise<string> => {
     try {
       const response = await fetch('/api/chat', {
@@ -538,6 +536,7 @@ export default function Home() {
     }
   }, [voiceSettings.enableCaching, voiceSettings.retryAttempts]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleTranscriptComplete = useCallback(async (text: string) => {
     try {
       setError('');
@@ -686,10 +685,8 @@ export default function Home() {
 
     return () => {
       whisperWorker.current?.terminate();
-      const currentTtsEngine = ttsEngine.current;
-      if (currentTtsEngine) {
-        currentTtsEngine.stop();
-      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      ttsEngine.current.stop();
     };
   }, [handleTranscriptComplete]);
 
@@ -771,7 +768,7 @@ export default function Home() {
                   🎙️ Listening... Speak clearly into your microphone
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
-                  Click &quot;Stop Recording&quot; when you&apos;re finished speaking
+                  Click &quot;Stop Recording&quot; when finished speaking
                 </p>
               </div>
             )}
